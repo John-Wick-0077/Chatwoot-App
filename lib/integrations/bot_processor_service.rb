@@ -13,6 +13,11 @@ class Integrations::BotProcessorService
   private
 
   def should_run_processor?(message)
+    Rails.logger.info "[Toqan] message attrs: type=#{message.message_type}, private=#{message.private?}, outgoing=#{message.outgoing?}, content=#{message.content.inspect}"
+    Rails.logger.info('[Toqan] → Checking should_run_processor?')
+    Rails.logger.info("[Toqan] → message.private?: #{message.private?}")
+    Rails.logger.info("[Toqan] → processable_message?: #{processable_message?(message)}")
+    Rails.logger.info("[Toqan] → conversation.status: #{message.conversation.status}")
     return if message.private?
     return unless processable_message?(message)
     return unless conversation.pending?

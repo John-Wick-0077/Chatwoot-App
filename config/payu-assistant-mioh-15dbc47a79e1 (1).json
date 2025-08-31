@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "payu-assistant-mioh",
+  "private_key_id": "15dbc47a79e1805134d6ed2b1a1458bdfe5043d5",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCroOr4HaeqjDA/\nbJdpMZxywiOpn8PNxyF0qGC8UX5c1cMo+mW9azVctneND0PErIoSqw75VLw7vVcO\nGRecYvRyYxKcRyFLJ81YzlA9j+ttun6MlFLQ/h9sBHHaYK3k6CkND6U3WsXH8PwV\n8+D0amvlAiZy0f3Oba6xW/VZ6L59GaosC4Es3L+z9IQeMHARC5dtU/raVR7bakpr\nik4xmpz/LjQewpPUP7iMx+/rcHMSbLHEgVuvhlKHDlYwuyfTL7Vyv8SPAGBWCGOG\nk0eq2QXb9jAdJRIlLguj7A2HYUzQ94yht/kz+pYaWmxkQxm+SFgbqpjyHCRP6gES\nAcY+zeDnAgMBAAECggEAEeCUqRyZquOoYOrkSKJQzAlZ4qDQKf6chwTE8sjAU1Y2\n2m1erKDesZYWFNzqr7FTPoeP6zu+0bAywbauZW1PThzwwtOL7cKrGp1+8TKtEMR0\nyxrmF3vo9PzviRI5+taN9BzVllL/uAhrkbPSElOFgpi7PYmPGPIG2NWd1Gwwb2JR\nva95sB9Gy2NIo05rn16sBJ1Gl26EFyOg5CW9bkLlgEcf4DqJ2QSRMV2e8yEs7YFG\nbOg/sfZnEshBUP8ZfJ5JuzWO46KcC+rasr7j5+XWFUVigdEwUAwKPL2uCKgKlvXZ\n9IVGD+nnPN4loR28Nr/BLilMcPPzsSgLqGPpsdQlOQKBgQDe9WbLSTx7vfySF4X3\nNOS+ufMBdT9D6LS0LxpInV1p1jz1cRWFsEJpnMW58H6qPRVlWYlBlVHI/qjdMw+3\n6Z24h8vWuhXyxEvZM/W4D2RlP/eQByV64YAvv00xlmB/tKIuro6Ev51tLkmRAtgt\nyoLEg4aVIy6nLUnmACD0I7Eb6QKBgQDFECjLITj9tybNRZJOMRlZsW+96R8/mD+4\naGcJkqbZTRt3EQmyyUcok50FhQlyB92quc7sD+OIrp3B/ukNQg/nJgseocO4YfH+\nWMfzN7Z6ze2lT0refQ+hxlxEFm0dBmqYfltT+MMegWYYvazMZVNjjwwpEyVXSvLg\nkiDxsP2kTwKBgCdkXjwOfXQzdftt0oqBuuSDwA6C46Gg7MRlChTIUOfRJUYMK8xJ\n/wHf5ANdHVQApNYaQqjms+N6MuWaDu3khaxDudz/Vb9ltSz0BDb36ToGWjwFNzcF\nvnsxJndbZUNK69ipmJ6VqD/RDMhlI0K74+zKfC2/YI/C7aqIXUolQDZ5AoGAAJ6S\nYkESesmul4qWcSR6XevO3Bv1ey+xU5UQbdlGKPyzD2bATw2O6bO9FJ1ccD1SFw1K\ndzd9kZpq6IcymFYS0rkt48TCZrv4FMKWrk8Ihc5L5u8e3yApgmqrM5OWeDbi8uPC\nybrIcjoZ5g4CkwnmfzOd6CslPOcBaG9NJzVVNsUCgYA9yQY5yqIi3I/4l7tVWtDc\n4d4nDsdkYLZgf/wgEv5u/J7qlqD4pOSqwOMaWYiw8TCQwyxQdj1W1/vDE3lEYcv0\npuibZD8+BtL+9BdCZAcutjxjnXtoXUpIB0SpgrmBL61O2hf2rEGyfduL4gFlR7GO\n5pPgpxeN/LKcIOjb0PuaxQ==\n-----END PRIVATE KEY-----\n",
+  "client_email": "dialogflow-agent@payu-assistant-mioh.iam.gserviceaccount.com",
+  "client_id": "101052723287529586814",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dialogflow-agent%40payu-assistant-mioh.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

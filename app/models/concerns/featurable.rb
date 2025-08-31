@@ -1,48 +1,40 @@
 module Featurable
   extend ActiveSupport::Concern
 
-  QUERY_MODE = {
-    flag_query_mode: :bit_operator,
-    check_for_column: false
-  }.freeze
-
   FEATURE_LIST = YAML.safe_load(Rails.root.join('config/features.yml').read).freeze
 
-  FEATURES = FEATURE_LIST.each_with_object({}) do |feature, result|
-    result[result.keys.size + 1] = "feature_#{feature['name']}".to_sym
-  end
-
   included do
-    include FlagShihTzu
-    has_flags FEATURES.merge(column: 'feature_flags').merge(QUERY_MODE)
-
     before_create :enable_default_features
   end
 
   def enable_features(*names)
+    self.feature_flags ||= {}
     names.each do |name|
-      send("feature_#{name}=", true)
+      feature_flags[name.to_s] = true
     end
   end
 
   def enable_features!(*names)
     enable_features(*names)
-    save
+    save!
   end
 
   def disable_features(*names)
+    self.feature_flags ||= {}
     names.each do |name|
-      send("feature_#{name}=", false)
+      feature_flags[name.to_s] = false
     end
   end
 
   def disable_features!(*names)
     disable_features(*names)
-    save
+    save!
   end
 
   def feature_enabled?(name)
-    send("feature_#{name}?")
+    return false if feature_flags.blank?
+
+    feature_flags[name.to_s] == true
   end
 
   def all_features

@@ -36,10 +36,12 @@ class Integrations::Hook < ApplicationRecord
   belongs_to :inbox, optional: true
   has_secure_token :access_token
 
-  enum hook_type: { account: 0, inbox: 1 }
+  enum hook_type: { account: 0, inbox: 1, dialogflow: 2 }
 
   scope :account_hooks, -> { where(hook_type: 'account') }
   scope :inbox_hooks, -> { where(hook_type: 'inbox') }
+  scope :dialogflow_hooks, -> { where(hook_type: 'dialogflow') }
+  scope :toqan_hooks, -> { where(app_id: 'toqan') }
 
   def app
     @app ||= Integrations::App.find(id: app_id)
@@ -53,6 +55,10 @@ class Integrations::Hook < ApplicationRecord
     app_id == 'dialogflow'
   end
 
+  def toqan?
+    app_id == 'toqan'
+  end
+
   def notion?
     app_id == 'notion'
   end
@@ -64,10 +70,13 @@ class Integrations::Hook < ApplicationRecord
   def process_event(event)
     case app_id
     when 'openai'
-      Integrations::Openai::ProcessorService.new(hook: self, event: event).perform if app_id == 'openai'
+      Integrations::Openai::ProcessorService.new(hook: self, event: event).send("#{event[:name]}_message")
     else
-      { error: 'No processor found' }
+      { error: 'No processor foundbjsbkjdbjwkdekjwekjbefwjkk' }
     end
+  rescue StandardError => e
+    Rails.logger.error("[OpenAI] #{e.class}: #{e.message}")
+    { error: 'Error processing request' }
   end
 
   def feature_allowed?

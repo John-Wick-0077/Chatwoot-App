@@ -1,137 +1,213 @@
-class Integrations::Openai::ProcessorService < Integrations::OpenaiBaseService
-  AGENT_INSTRUCTION = 'You are a helpful support agent.'.freeze
-  LANGUAGE_INSTRUCTION = 'Ensure that the reply should be in user language.'.freeze
-  def reply_suggestion_message
-    make_api_call(reply_suggestion_body)
-  end
+# frozen_string_literal: true
 
-  def summarize_message
-    make_api_call(summarize_body)
-  end
+require 'net/http'
+require 'uri'
+require 'json'
 
-  def rephrase_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please rephrase the following response. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+module Integrations
+  module Openai
+    class ProcessorService < Integrations::OpenaiBaseService
+      attr_reader :hook, :event
 
-  def fix_spelling_grammar_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please fix the spelling and grammar of the following response. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      def initialize(hook:, event:)
+        @hook = hook
+        @event = event
+      end
 
-  def shorten_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please shorten the following response. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      TOQAN_API_KEY  = ENV.fetch('TOQAN_API_KEY') do
+        raise 'ENV["TOQAN_API_KEY"] is not set'
+      end
+      API_BASE_URL   = 'https://api.coco.prod.toqan.ai/api'
+      POLL_DELAY_SEC = 1.5
+      MAX_POLLS      = 10
 
-  def expand_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please expand the following response. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      AGENT_INSTRUCTION    = 'You are a helpful support agent.'
+      LANGUAGE_INSTRUCTION = 'Ensure that the reply should be in user language.'
 
-  def make_friendly_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please make the following response more friendly. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      def reply_suggestion_message
+        system_prompt = prompt_from_file('reply')
+        user_prompt   = conversation_messages
+        result        = call_toqan("#{system_prompt}\n\n#{user_prompt}")
+        { message: result[:data][:message] }
+      end
 
-  def make_formal_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please make the following response more formal. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      def summarize_message
+        system_prompt = prompt_from_file('summary')
+        user_prompt   = conversation_messages
+        result        = call_toqan("#{system_prompt}\n\n#{user_prompt}")
+        { message: result[:data][:message] }
+      end
 
-  def simplify_message
-    make_api_call(build_api_call_body("#{AGENT_INSTRUCTION} Please simplify the following response. " \
-                                      "#{LANGUAGE_INSTRUCTION}"))
-  end
+      def rephrase_message
+        prompt = "#{AGENT_INSTRUCTION} Please rephrase the following response. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
 
-  private
+      def fix_spelling_grammar_message
+        prompt = <<~PROMPT
+          #{AGENT_INSTRUCTION}
+          Fix the spelling and grammar of the text below. Assume the user meant something meaningful, even if unclear.
+          Respond only with the corrected version — no explanations, no notes, just the corrected sentence.
+          Use sentence case and proper punctuation.
 
-  def prompt_from_file(file_name, enterprise: false)
-    path = enterprise ? 'enterprise/lib/enterprise/integrations/openai_prompts' : 'lib/integrations/openai/openai_prompts'
-    Rails.root.join(path, "#{file_name}.txt").read
-  end
+          "#{event['data']['content']}"
+        PROMPT
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
 
-  def build_api_call_body(system_content, user_content = event['data']['content'])
-    {
-      model: GPT_MODEL,
-      messages: [
-        { role: 'system', content: system_content },
-        { role: 'user', content: user_content }
-      ]
-    }.to_json
-  end
+      def shorten_message
+        prompt = "#{AGENT_INSTRUCTION} Please shorten the following response. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
 
-  def conversation_messages(in_array_format: false)
-    messages = init_messages_body(in_array_format)
+      def expand_message
+        prompt = "#{AGENT_INSTRUCTION} Please expand the following response. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
 
-    add_messages_until_token_limit(conversation, messages, in_array_format)
-  end
+      def make_friendly_message
+        prompt = "#{AGENT_INSTRUCTION} Please make the following response more friendly. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
 
-  def add_messages_until_token_limit(conversation, messages, in_array_format, start_from = 0)
-    character_count = start_from
-    conversation.messages.where(message_type: [:incoming, :outgoing]).where(private: false).reorder('id desc').each do |message|
-      character_count, message_added = add_message_if_within_limit(character_count, message, messages, in_array_format)
-      break unless message_added
+      def make_formal_message
+        prompt = "#{AGENT_INSTRUCTION} Please make the following response more formal. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
+
+      def simplify_message
+        prompt = "#{AGENT_INSTRUCTION} Please simplify the following response. " \
+                 "#{LANGUAGE_INSTRUCTION}\n\n#{event['data']['content']}"
+        result = call_toqan(prompt)
+        { message: result[:data][:message] }
+      end
+
+      def call_toqan(user_message)
+        Rails.logger.info("[Toqan] ► create_conversation\n#{user_message}")
+
+        conv_id, req_id = create_conversation(user_message)
+        return openai_like_response('Failed to start conversation') unless conv_id && req_id
+
+        raw_answer = nil
+        MAX_POLLS.times do |i|
+          sleep POLL_DELAY_SEC
+          raw_answer = fetch_answer(conv_id, req_id)
+          break if raw_answer.present?
+
+          Rails.logger.debug { "[Toqan] answer not ready (poll #{i + 1})" }
+        end
+        final_answer = if raw_answer.is_a?(Hash)
+                         raw_answer[:answer] || raw_answer['answer']
+                       else
+                         raw_answer
+                       end
+        final_answer ||= 'No answer received from Toqan'
+        openai_like_response(clean_answer(final_answer))
+
+      rescue StandardError => e
+        Rails.logger.error("[Toqan] #{e.class}: #{e.message}")
+        Rails.logger.error(e.backtrace.join("\n"))
+        openai_like_response('Error contacting Toqan')
+      end
+
+      def openai_like_response(content)
+        {
+          data: {
+            message: content
+          }
+        }
+      end
+
+      def clean_answer(raw)
+        return '' unless raw
+
+        CGI.unescapeHTML(raw)
+           .gsub(%r{<think>.*?</think>}m, '')
+           .strip
+      end
+
+      def log_request(method, uri, body)
+        Rails.logger.debug { "[Toqan] Request: #{method} #{uri} - Body: #{body.truncate(200)}" }
+      end
+
+      def create_conversation(message)
+        uri  = URI("#{API_BASE_URL}/create_conversation")
+        body = { user_message: message }.to_json
+        log_request('POSTarihant', uri, body)
+        res  = Net::HTTP.post(uri, body, headers)
+
+        log_http('create_conversation', res)
+        return unless res.is_a?(Net::HTTPSuccess)
+
+        json = safe_parse(res.body)
+        [json['conversation_id'], json['request_id']]
+      end
+
+      def fetch_answer(conversation_id, request_id)
+        uri = URI("#{API_BASE_URL}/get_answer")
+        http     = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        request  = Net::HTTP::Get.new(uri.request_uri, headers)
+        request.body = { conversation_id: conversation_id,
+                         request_id: request_id }.to_json
+
+        log_request('getanrihant', uri, request.body)
+        res = http.request(request)
+        log_http('get_answer', res)
+        return unless res.is_a?(Net::HTTPSuccess)
+
+        json = safe_parse(res.body)
+        json['answer']
+      end
+
+      def headers
+        {
+          'X-Api-Key' => TOQAN_API_KEY,
+          'Content-Type' => 'application/json',
+          'Accept' => '*/*'
+        }
+      end
+
+      def safe_parse(str)
+        JSON.parse(str)
+      rescue JSON::ParserError
+        Rails.logger.error("[Toqan] JSON parse error for body: #{str.inspect}")
+        {}
+      end
+
+      def log_http(step, res)
+        log_data = {
+          step: step,
+          status: res.code,
+          headers: res.each_header.to_h,
+          body: safe_parse(res.body),
+          raw_body: res.body.truncate(400)
+        }
+
+        Rails.logger.info("[Toqan] Response details: #{log_data.to_json}")
+      rescue StandardError => e
+        Rails.logger.error("[Toqan] Error logging response: #{e.message}")
+      end
+
+      def prompt_from_file(name, enterprise: false)
+        path = if enterprise
+                 'enterprise/lib/enterprise/integrations/openai_prompts'
+               else
+                 'lib/integrations/openai/openai_prompts'
+               end
+        Rails.root.join(path, "#{name}.txt").read
+      end
     end
-    messages
-  end
-
-  def add_message_if_within_limit(character_count, message, messages, in_array_format)
-    if valid_message?(message, character_count)
-      add_message_to_list(message, messages, in_array_format)
-      character_count += message.content.length
-      [character_count, true]
-    else
-      [character_count, false]
-    end
-  end
-
-  def valid_message?(message, character_count)
-    message.content.present? && character_count + message.content.length <= TOKEN_LIMIT
-  end
-
-  def add_message_to_list(message, messages, in_array_format)
-    formatted_message = format_message(message, in_array_format)
-    messages.prepend(formatted_message)
-  end
-
-  def init_messages_body(in_array_format)
-    in_array_format ? [] : ''
-  end
-
-  def format_message(message, in_array_format)
-    in_array_format ? format_message_in_array(message) : format_message_in_string(message)
-  end
-
-  def format_message_in_array(message)
-    { role: (message.incoming? ? 'user' : 'assistant'), content: message.content }
-  end
-
-  def format_message_in_string(message)
-    sender_type = message.incoming? ? 'Customer' : 'Agent'
-    "#{sender_type} #{message.sender&.name} : #{message.content}\n"
-  end
-
-  def summarize_body
-    {
-      model: GPT_MODEL,
-      messages: [
-        { role: 'system',
-          content: prompt_from_file('summary', enterprise: false) },
-        { role: 'user', content: conversation_messages }
-      ]
-    }.to_json
-  end
-
-  def reply_suggestion_body
-    {
-      model: GPT_MODEL,
-      messages: [
-        { role: 'system',
-          content: prompt_from_file('reply', enterprise: false) }
-      ].concat(conversation_messages(in_array_format: true))
-    }.to_json
   end
 end
-
-Integrations::Openai::ProcessorService.prepend_mod_with('Integrations::OpenaiProcessorService')

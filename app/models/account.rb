@@ -6,7 +6,7 @@
 #  auto_resolve_duration :integer
 #  custom_attributes     :jsonb
 #  domain                :string(100)
-#  feature_flags         :bigint           default(0), not null
+#  feature_flags         :jsonb            not null
 #  internal_attributes   :jsonb            not null
 #  limits                :jsonb
 #  locale                :integer          default("en")
@@ -53,8 +53,15 @@ class Account < ApplicationRecord
                  schema: SETTINGS_PARAMS_SCHEMA,
                  attribute_resolver: ->(record) { record.settings }
 
-  store_accessor :settings, :auto_resolve_after, :auto_resolve_message, :auto_resolve_ignore_waiting
-  store_accessor :settings, :audio_transcriptions, :auto_resolve_label
+  store_accessor :settings,
+                 :auto_resolve_after,
+                 :auto_resolve_message,
+                 :auto_resolve_ignore_waiting,
+                 :audio_transcriptions,
+                 :auto_resolve_label,
+                 :sla_enabled
+
+  attr_accessor :selected_feature_flags
 
   has_many :account_users, dependent: :destroy_async
   has_many :agent_bot_inboxes, dependent: :destroy_async

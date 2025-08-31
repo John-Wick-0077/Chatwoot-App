@@ -34,10 +34,56 @@ class SuperAdmin::AccountsController < SuperAdmin::ApplicationController
   # and `dashboard`:
   #
   def resource_params
+    Rails.logger.info "=== RAW PARAMS === #{params.to_unsafe_h.except(:authenticity_token).inspect}"
+
     permitted_params = super
-    permitted_params[:limits] = permitted_params[:limits].to_h.compact
-    permitted_params[:selected_feature_flags] = params[:enabled_features].keys.map(&:to_sym) if params[:enabled_features].present?
-    permitted_params
+    Rails.logger.info "=== AFTER super === #{permitted_params.inspect}"
+
+    if permitted_params[:limits].is_a?(ActionController::Parameters)
+      permitted_params[:limits] = permitted_params[:limits].permit!.to_h.compact
+    elsif permitted_params[:limits].is_a?(Hash)
+      permitted_params[:limits] = permitted_params[:limits].compact
+    end
+
+    ff_params = params.dig(:account, :feature_flags)
+    if ff_params.is_a?(ActionController::Parameters)
+      permitted_params[:feature_flags] = ff_params.permit!.to_h
+      Rails.logger.info "=== USING NEW feature_flags HASH === #{permitted_params[:feature_flags].inspect}"
+    elsif ff_params.is_a?(Hash)
+      permitted_params[:feature_flags] = ff_params
+      Rails.logger.info "=== USING NEW feature_flags HASH (plain) === #{permitted_params[:feature_flags].inspect}"
+    end
+
+    if params[:enabled_features].present?
+      enabled_keys = params[:enabled_features].keys.map(&:to_s)
+      names = Featurable::FEATURE_LIST.pluck('name')
+      permitted_params[:feature_flags] = names.index_with do |name|
+        enabled_keys.include?("feature_#{name}")
+      end
+      Rails.logger.info "=== DERIVED FROM enabled_features === #{permitted_params[:feature_flags].inspect}"
+    end
+
+    if params[:enabled_features].present?
+      enabled_keys = params[:enabled_features].keys.map(&:to_s)
+      names = Featurable::FEATURE_LIST.pluck('name') # ["agent_bots", "automations", ...]
+      permitted_params[:feature_flags] = names.index_with do |name|
+        enabled_keys.include?("feature_#{name}")
+      end
+      Rails.logger.info "=== DERIVED FROM enabled_features === #{permitted_params[:feature_flags].inspect}"
+    end
+
+    if params[:selected_feature_flags].present?
+      selected = Array(params[:selected_feature_flags]).map { |s| s.to_s.sub(/^feature_/, '') }
+      names = Featurable::FEATURE_LIST.pluck('name')
+      permitted_params[:feature_flags] ||= {}
+      names.each { |name| permitted_params[:feature_flags][name] = selected.include?(name) }
+      Rails.logger.info "=== DERIVED FROM selected_feature_flags === #{permitted_params[:feature_flags].inspect}"
+    end
+    permitted_params[:feature_flags] ||= {}
+
+    final_attrs = permitted_params.permit!.to_h
+    Rails.logger.info "=== FINAL PARAMS TO UPDATE === #{permitted_params.inspect}"
+    final_attrs
   end
 
   # See https://administrate-prototype.herokuapp.com/customizing_controller_actions

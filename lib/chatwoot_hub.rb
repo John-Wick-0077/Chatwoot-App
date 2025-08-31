@@ -65,9 +65,11 @@ class ChatwootHub
   end
 
   def self.sync_with_hub
+    return if ENV['DISABLE_TELEMETRY']
+
     begin
       info = instance_config
-      info = info.merge(instance_metrics) unless ENV['DISABLE_TELEMETRY']
+      info = info.merge(instance_metrics)
       response = RestClient.post(PING_URL, info.to_json, { content_type: :json, accept: :json })
       parsed_response = JSON.parse(response)
     rescue *ExceptionList::REST_CLIENT_EXCEPTIONS => e
