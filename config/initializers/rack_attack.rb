@@ -47,6 +47,10 @@ class Rack::Attack
 
   Rack::Attack.safelist('trusted IPs', &:allowed_ip?)
 
+    Rack::Attack.safelist('allow my dev machine') do |req|
+    # Replace this with your laptop’s IP address (what you use to access 10.167.9.71:8080 from browser)
+    req.ip == '10.159.8.157'
+
   ### Throttle Spammy Clients ###
 
   # If any single client IP is making tons of requests, then they're
