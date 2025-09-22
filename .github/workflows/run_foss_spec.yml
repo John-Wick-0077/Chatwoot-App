@@ -10,6 +10,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-22.04
+    env:
+      TOQAN_API_KEY: ${{ secrets.TOQAN_API_KEY }}
     services:
       postgres:
         image: pgvector/pgvector:pg15
