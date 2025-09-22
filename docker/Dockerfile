@@ -25,15 +25,18 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 ENV BUNDLE_PATH="/gems"
 
 RUN apk update && apk add --no-cache \
-  openssl \
-  tar \
+  bash \
   build-base \
-  tzdata \
+  curl \
+  git \
   postgresql-dev \
   postgresql-client \
-  git \
-  curl \
+  tzdata \
+  openssl \
+  tar \
   xz \
+  libxml2-dev \
+  libxslt-dev \
   && mkdir -p /var/app \
   && gem install bundler
 
